@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+  <!--arg name="laser_ust10_front_enabled" value="true" />
+  <arg name="laser_enabled" value="true" />
+  <arg name="lms1xx_enabled" value="true" /-->
+
+  <!--- Run Gazebo -->
+  <include file="$(find husky_gazebo)/launch/husky_playpen.launch" />
+
+  <!--- Run gmapping -->
+  <include file="$(find husky_navigation)/launch/gmapping.launch" />
+
+  <!--- Run Move Base -->
+  <include file="$(find husky_navigation)/launch/move_base.launch" />
+  
+  <!--- Run Rviz -->
+  <include file="$(find husky_viz)/launch/view_robot.launch" />
+</launch>
