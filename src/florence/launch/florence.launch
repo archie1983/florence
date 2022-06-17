@@ -4,6 +4,29 @@
   <arg name="laser_enabled" value="true" />
   <arg name="lms1xx_enabled" value="true" /-->
 
+  <group if="$(optenv RPLIDAR 0)">
+    <include file="$(find rplidar_ros)/launch/rplidar.launch" />
+
+    <node pkg="laser_filters" type="scan_to_scan_filter_chain" name="laser_filter">
+      <rosparam command="load" file="$(find florence)/config/husky_laser_filter.yaml" />
+    </node>
+  </group>
+
+  <group if="$(optenv USB_CAM 0)">
+    <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+      <param name="video_device" value="$(optenv USB_CAM_DEVICE /dev/video0)" />
+      <param name="pixel_format" value="mjpeg" />
+      <param name="sharpness" value="200" />
+      <param name="autofocus" value="true" />
+      <param name="image_width" value="1280" />
+      <param name="image_height" value="720" />
+      <param name="framerate" value="10" />
+
+      <param name="camera_frame_id" value="usb_cam" />
+      <param name="io_method" value="mmap"/>
+    </node>
+  </group>
+
   <!--- Run Gazebo -->
   <include file="$(find husky_gazebo)/launch/husky_playpen.launch" />
 
@@ -15,4 +38,8 @@
   
   <!--- Run Rviz -->
   <include file="$(find husky_viz)/launch/view_robot.launch" />
+
+  <!-- Run ROS-TCP-Endpoint -->
+  <include file="$(find ros_tcp_endpoint)/launch/endpoint.launch" />
+
 </launch>

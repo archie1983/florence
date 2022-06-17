@@ -62,6 +62,10 @@
   <exec_depend>husky_gazebo husky_viz husky_navigation</exec_depend>
   <exec_depend>husky_navigation</exec_depend>
   <exec_depend>husky_viz</exec_depend>
+  <!-- LiDAR and cameras -->
+  <depend>rplidar_ros</depend>
+  <depend>usb_cam</depend>
+  <depend>laser_filters</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
