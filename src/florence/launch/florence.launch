@@ -13,7 +13,7 @@
   </group>
 
   <group if="$(optenv USB_CAM 0)">
-    <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+    <!--node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
       <param name="video_device" value="$(optenv USB_CAM_DEVICE /dev/video0)" />
       <param name="pixel_format" value="mjpeg" />
       <param name="sharpness" value="200" />
@@ -24,6 +24,8 @@
 
       <param name="camera_frame_id" value="usb_cam" />
       <param name="io_method" value="mmap"/>
+    </node-->
+    <node name="usb_cam_publisher" pkg="florence" type="usb_cam_publisher.py" output="screen" >
     </node>
   </group>
 

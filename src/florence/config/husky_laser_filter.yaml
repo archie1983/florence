@@ -1,0 +1,11 @@
+scan_filter_chain:
+- name: inf_remover
+  type: laser_filters/LaserScanRangeFilter
+  params:
+    use_message_range_limits: true
+    upper_threshold: 16.0
+- name: angle
+  type: laser_filters/LaserScanAngularBoundsFilterInPlace
+  params:
+    lower_angle: -2.642
+    upper_angle: -0.5

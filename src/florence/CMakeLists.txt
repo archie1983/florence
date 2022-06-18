@@ -162,6 +162,10 @@ include_directories(
 ## Install ##
 #############
 
+catkin_install_python(PROGRAMS scripts/usb_cam_publisher.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
 # all install targets should use catkin DESTINATION variables
 # See http://ros.org/doc/api/catkin/html/adv_user_guide/variables.html
 
@@ -212,3 +216,4 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
