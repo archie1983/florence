@@ -25,7 +25,7 @@
       <param name="camera_frame_id" value="usb_cam" />
       <param name="io_method" value="mmap"/>
     </node-->
-    <node name="usb_cam_publisher" pkg="florence" type="usb_cam_publisher.py" output="screen" >
+    <node name="usb_cam_publisher" pkg="florence" type="usb_cam_publisher.py" output="log" >
     </node>
   </group>
 
