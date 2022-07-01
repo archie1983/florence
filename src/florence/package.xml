@@ -67,6 +67,8 @@
   <depend>usb_cam</depend>
   <depend>laser_filters</depend>
 
+  <!-- Needed in Python scripts -->
+  <depend>actionlib</depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

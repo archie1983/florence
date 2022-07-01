@@ -29,6 +29,10 @@
     </node>
   </group>
 
+  <!-- Run Florence base controller -->
+  <node name="florence_base_controller" pkg="florence" type="move_florence.py" output="log" >
+  </node>
+
   <!--- Run Gazebo -->
   <include file="$(find husky_gazebo)/launch/husky_playpen.launch" />
 
