@@ -12,6 +12,27 @@
     </node>
   </group>
 
+  <!-- If we are using UST10 lidars then they are already running and we just need to start laser filters -->
+  <group if="$(optenv HUSKY_UST10_ENABLED 0)">
+    <!-- Let's merge the output from our two lidars into a single topic. -->
+    <node pkg="ira_laser_tools" name="laserscan_multi_merger" type="laserscan_multi_merger" output="screen">
+      <param name="destination_frame" value="front_laser_mount"/>
+      <param name="cloud_destination_topic" value="/merged_cloud"/>
+      <param name="scan_destination_topic" value="/scan_multi"/>
+      <param name="laserscan_topics" value ="/front/scan /rear/scan" /> <!-- LIST OF THE LASER SCAN TOPICS TO SUBSCRIBE -->
+      <param name="angle_min" value="-2.0"/>
+      <param name="angle_max" value="2.0"/>
+      <param name="angle_increment" value="0.0058"/>
+      <param name="scan_time" value="0.0333333"/>
+      <param name="range_min" value="0.30"/>
+      <param name="range_max" value="50.0"/>
+    </node>
+
+    <!--node pkg="laser_filters" type="scan_to_scan_filter_chain" name="laser_filter">
+      <rosparam command="load" file="$(find florence)/config/husky_laser_filter.yaml" />
+    </node-->
+  </group>
+
   <group if="$(optenv USB_CAM 0)">
     <!--node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
       <param name="video_device" value="$(optenv USB_CAM_DEVICE /dev/video0)" />
@@ -47,7 +68,12 @@
   <!--include file="$(find husky_gazebo)/launch/husky_playpen.launch" /-->
 
   <!--- Run gmapping -->
-  <include file="$(find husky_navigation)/launch/gmapping.launch" />
+  <include file="$(find husky_navigation)/launch/gmapping.launch">
+    <param name="scan_topic" value="front/scan" />
+  </include>
+
+  <!-- Run husky's cartographer -->
+  <!-- include file="$(find husky_cartographer_navigation)/launch/cartographer_florence.launch" /-->
 
   <!--- Run Move Base -->
   <include file="$(find husky_navigation)/launch/move_base.launch" />
