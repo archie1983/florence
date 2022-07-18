@@ -17,5 +17,6 @@ export HUSKY_FRONT_BUMPER_EXTEND=false
 export HUSKY_REAR_BUMPER_EXTEND=false
 export HUSKY_UST10_XYZ="0.3812 0.0 -0.35635"
 export HUSKY_UST10_SECONDARY_XYZ="-0.4712 0.0 -0.35635"
+export HUSKY_LASER_TOPIC="/scan_filtered"
 source /home/jet/robotics/cartographer_ws/devel_isolated/setup.bash
 source /home/jet/robotics/florence_ws/devel/setup.bash

@@ -68,6 +68,7 @@
   <depend>laser_filters</depend>
   <depend>image_transport</depend>
   <depend>image_transport_plugins</depend>
+  <depend>global_planner</depend>
 
   <!-- Needed in Python scripts -->
   <depend>actionlib</depend>
