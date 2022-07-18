@@ -9,6 +9,10 @@ from nav_msgs.msg import Odometry
 from std_srvs.srv import Empty
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
 import numpy as np
+import threading
+from enum import Enum
+
+Crawl_Thread_State = Enum('Crawl_Thread_State', 'idle crawling have_to_stop stopping')
 
 class FlorenceBaseController:
     # Number of seconds required to rotate 1 degree at speed of 0.1 when using base_driver.move.
@@ -18,6 +22,10 @@ class FlorenceBaseController:
     def __init__(self):
         # This will be our node name
         rospy.init_node("florence_base_controller")
+
+        # Crawling thread initial state
+        self.crawl_state = Crawl_Thread_State.idle
+        self.crawl_thread = None
 
         # We will subscribe to a String command topic
         self.base_sub = rospy.Subscriber("/base_cntrl/in_cmd", String, self.on_command)
@@ -37,13 +45,7 @@ class FlorenceBaseController:
         # hand move through the screen depth is about +-0.2, depending on whether we're going far to near or near to far. Also, smaller
         # moves appear to be anywhere between 0.03 and 0.15- almost irrespectively of how much was intended to move. So
         # we will probably need to loosely rely on this number and crawl by relatively small amount even with full move.
-        self.rotate_sub = rospy.Subscriber("/base_cntrl/crawl_x", Float32, self.on_crawl)
-        
-        # We will subscribe to an Int16 command topic to move forward by the passed amount of meters.
-        self.go_fwd_sub = rospy.Subscriber("/base_cntrl/go_fwd", Float32, self.on_fwd)
-        
-        # We will subscribe to an Int16 command topic to move backwards by the passed amount of meters.
-        self.go_back_sub = rospy.Subscriber("/base_cntrl/go_back", Float32, self.on_back)
+        self.rotate_sub = rospy.Subscriber("/base_cntrl/crawl_x", Float32, self.on_crawl2)
         
         # This is how we will monitor the completion of the requested move
         self.go_back_sub = rospy.Subscriber("/odometry/filtered", Odometry, self.on_odometry_received)
@@ -146,7 +148,7 @@ class FlorenceBaseController:
         move.angular.z = 0.5 # constant speed of rotation
         
         cur_orientation = self.cur_odometry.pose.pose.orientation
-        desired_pose = Pose(self.cur_odometry.pose.pose.position, self.rotateQuaternionAroundZ(cur_orientation, amount.data * 5)) # This will be current pose with altered orientation
+        desired_pose = Pose(self.cur_odometry.pose.pose.position, self.rotateQuaternionAroundZ(cur_orientation, amount.data * -5)) # This will be current pose with altered orientation
         
         self.move_to_pose(desired_pose, False)
         #self.base_pub.publish("OK ROTATE")
@@ -165,14 +167,54 @@ class FlorenceBaseController:
     def on_odometry_received(self, odometry):
         self.cur_odometry = odometry
     
-    # When user wants the robot to go forward, then this will be called with the number of meters passed.
-    def on_fwd(self, dist):
-        self.base_pub.publish("OK FWD")
-        
-    # When user wants the robot to go forward, then this will be called with the number of meters passed.
-    def on_back(self, dist):
-        self.base_pub.publish("OK BACK")
+    # This is what our crawl thread will be executing    
+    def crawler_thread_function(self, amount):
+        self.crawl_state = Crawl_Thread_State.idle
 
+        cmd = Twist()
+        if (amount.data > 0):
+            cmd.linear.x = 0.5 # constant speed of crawl forward
+        else:
+            cmd.linear.x = -0.5 # constant speed of crawl backwards
+
+        cmd.linear.y = 0
+        cmd.angular.z = 0
+        rospy.loginfo('Sending dX={}, dY={}, dT={} for {}s'.format(0.5,
+                                                                   0,
+                                                                   0,
+                                                                   amount.data * 50))
+        duration = round(abs(amount.data) * 50)
+        r = rospy.Rate(10)
+        self.crawl_state = Crawl_Thread_State.crawling
+        for ii in range(int(10*duration)):
+            r.sleep()
+            # check if we need to stop
+            if (self.crawl_state == Crawl_Thread_State.have_to_stop):
+                break
+            # otherwise send the Twist message to the cmd_vel topic
+            self.cmd_vel_pub.publish(cmd)
+        #rospy.loginfo('Stopping')
+        self.crawl_state = Crawl_Thread_State.stopping
+        cmd = Twist()
+        for ii in range(10):
+            r.sleep()
+            self.cmd_vel_pub.publish(cmd)
+        
+        # finally mark the thread as done
+        self.crawl_state = Crawl_Thread_State.idle
+            
+    # When user wants the robot to go forward, then this will be called with the number of meters passed.
+    def on_crawl2(self, amount):
+        # First if we already have some thread running, then tell it to stop and wait for it.
+        if (self.crawl_state != Crawl_Thread_State.idle):
+            self.crawl_state = Crawl_Thread_State.have_to_stop
+            self.crawl_thread.join()
+    
+        # Now create a brand new thread and let it run
+        self.crawl_thread = threading.Thread(target=self.crawler_thread_function, args=(amount,), daemon=True)
+        
+        self.crawl_thread.start()
+        
     def shutdown(self):
         rospy.loginfo("Stopping Florence base controller...")
         self.cmd_vel_pub.publish(Twist())
