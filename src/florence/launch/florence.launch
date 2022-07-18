@@ -29,6 +29,9 @@
     </node>
   </group>
 
+  <!-- Compresses ROS simulation image into a CompressedImage that we can show in unity -->
+  <!--rosrun image_transport republish raw in:=/sim_camera1/image_raw compressed out:=/sim_camera1/image_comp -->
+
   <!-- Run Florence base controller -->
   <node name="florence_base_controller" pkg="florence" type="move_florence.py" output="log" >
   </node>

@@ -139,7 +139,7 @@ class FlorenceBaseController:
         move.angular.z = 0.5 # constant speed of rotation
         
         cur_orientation = self.cur_odometry.pose.pose.orientation
-        desired_pose = Pose(self.cur_odometry.pose.pose.position, self.rotateQuaternionAroundZ(cur_orientation, amount.data)) # This will be current pose with altered orientation
+        desired_pose = Pose(self.cur_odometry.pose.pose.position, self.rotateQuaternionAroundZ(cur_orientation, amount.data * 5)) # This will be current pose with altered orientation
         
         self.move_to_pose(desired_pose, False)
         #self.base_pub.publish("OK ROTATE")
