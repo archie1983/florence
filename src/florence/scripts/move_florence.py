@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
 import rospy
-from std_msgs.msg import String, Float32
+from std_msgs.msg import String, Float32, Empty
 import actionlib
 from actionlib_msgs.msg import *
 from geometry_msgs.msg import Quaternion, Twist, Pose, Point
 from nav_msgs.msg import Odometry
-from std_srvs.srv import Empty
+from std_srvs.srv import Empty as EmptySrv
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
 import numpy as np
 import threading
@@ -31,12 +31,13 @@ class FlorenceBaseController:
         # Rotation thread initial state
         self.rotation_state = Rotate_Thread_State.idle
         self.rotation_thread = None
-
-        # We will subscribe to a String command topic
-        self.base_sub = rospy.Subscriber("/base_cntrl/in_cmd", String, self.on_command)
         
         # We will publish a String feedback topic
         self.base_pub = rospy.Publisher("/base_cntrl/out_result", String, queue_size=3)
+        
+        # We will subscribe to an emergency stop command topic. No data needed here. We just need to stop the robot when
+        # this is called.
+        self.base_sub = rospy.Subscriber("/base_cntrl/stop", Empty, self.on_stop)
         
         # We will subscribe to a Float32 command topic to rotate cw or ccw by the passed value, which will come from Unity.
         # The value is a bit arbitrary, but we'll need to make sense of it. At the moment it looks like more or less a full
@@ -59,7 +60,7 @@ class FlorenceBaseController:
         self.cmd_vel_pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 
         # Service for clearing costmaps
-        self.costmap_clear = rospy.ServiceProxy('/move_base/clear_costmaps', Empty)
+        self.costmap_clear = rospy.ServiceProxy('/move_base/clear_costmaps', EmptySrv)
         
         # Subscribe to the move_base action server. This lets us to directly interact with move_base- to ask for paths and set goals.
         self.move_base = actionlib.SimpleActionClient("move_base", MoveBaseAction)
@@ -75,6 +76,9 @@ class FlorenceBaseController:
         
         # Goal ID
         self.goal_id = 0
+        
+        # Lock for our rotations and crawls
+        self._lock = threading.Lock()
 
     # Creates an MoveBaseGoal object from a Pose and moves to it
     def move_to_pose(self, pose, report=True):
@@ -137,13 +141,6 @@ class FlorenceBaseController:
                 if report:
                     self.base_pub.publish("BAD MOVE")
                 return False
-
-    # This is how we'll react on the commands received
-    def on_command(self, cmd):
-        if cmd.data == "get_cost_of_travel":
-            # publish list of path costs to all shelves
-            #self.get_cost_list.publish(self.calculate_cost_of_travel())
-            self.base_pub.publish("NOT IMPLEMENTED")
     
     # When user wants the robot to rotate, then this will be called with a float32 number loosely indicating
     # amount to rotate by. See comment of self.rotate_sub for more info.
@@ -190,7 +187,12 @@ class FlorenceBaseController:
                                                                    amount.data * 50))
         duration = round(abs(amount.data) * 50)
         r = rospy.Rate(10)
-        self.crawl_state = Crawl_Thread_State.crawling
+
+        # Check one last time that we're good to go
+        with self._lock:
+            if (self.crawl_state == Crawl_Thread_State.idle):
+                self.crawl_state = Crawl_Thread_State.crawling
+        
         for ii in range(int(10*duration)):
             r.sleep()
             # check if we need to stop
@@ -232,7 +234,12 @@ class FlorenceBaseController:
 
         duration = round(abs(amount.data) * 5)
         r = rospy.Rate(10)
-        self.rotation_state = Rotate_Thread_State.turning
+        
+        # Check one last time that we're good to go
+        with self._lock:
+            if (self.rotation_state == Rotate_Thread_State.idle):
+                self.rotation_state = Rotate_Thread_State.turning
+        
         for ii in range(int(10*duration)):
             r.sleep()
             # check if we need to stop
@@ -254,7 +261,6 @@ class FlorenceBaseController:
     # amount to rotate by. See comment of self.rotate_sub for more info.
     # Positive number: rotating clock wise, negative: rotating counter clock wise
     def on_rotate2(self, amount):
-        Rotate_Thread_State
         # First if we already have some thread running, then tell it to stop and wait for it.
         if (self.rotation_state != Rotate_Thread_State.idle):
             self.rotation_state = Rotate_Thread_State.have_to_stop
@@ -265,6 +271,21 @@ class FlorenceBaseController:
         
         self.rotation_thread.start()
         
+    # When this is called, all we want to do is stop fully.
+    def on_stop(self):
+        # Make sure that we're not in the middle of changing the rotation or crawl states
+        with self._lock:
+            # Stop any rotation that is going on.
+            if (self.rotation_state != Rotate_Thread_State.idle):
+                self.rotation_state = Rotate_Thread_State.have_to_stop
+
+            # Stop any crawling that is going on.
+            if (self.crawl_state != Crawl_Thread_State.idle):
+                self.crawl_state = Crawl_Thread_State.have_to_stop
+            
+        # Cancel any goal that path planning is trying to achieve
+        self.move_base.cancel_goal()
+    
     def shutdown(self):
         rospy.loginfo("Stopping Florence base controller...")
         self.cmd_vel_pub.publish(Twist())
