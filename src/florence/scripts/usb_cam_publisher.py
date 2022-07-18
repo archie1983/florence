@@ -8,7 +8,7 @@ import numpy as np
 def usb_cam_publisher():
     pub = rospy.Publisher('camera1', CompressedImage, queue_size=10)
     rospy.init_node('usb_cam_publisher', anonymous=True)
-    rate = rospy.Rate(3) # 3hz
+    rate = rospy.Rate(10) # 10hz
 
     while not rospy.is_shutdown():
         #hello_str = "hello world %s" % rospy.get_time()
