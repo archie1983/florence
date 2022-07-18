@@ -52,6 +52,9 @@ class FlorenceBaseController:
         # moves appear to be anywhere between 0.03 and 0.15- almost irrespectively of how much was intended to move. So
         # we will probably need to loosely rely on this number and crawl by relatively small amount even with full move.
         self.rotate_sub = rospy.Subscriber("/base_cntrl/crawl_x", Float32, self.on_crawl2)
+
+        # Another way to control the robot, is continuous- the offset from start point is the speed of either rotation or movement in the Z direction.
+        self.rotate_sub = rospy.Subscriber("/base_cntrl/continuous", Twist, self.on_drive_continuously)
         
         # This is how we will monitor the completion of the requested move
         self.go_back_sub = rospy.Subscriber("/odometry/filtered", Odometry, self.on_odometry_received)
@@ -79,6 +82,9 @@ class FlorenceBaseController:
         
         # Lock for our rotations and crawls
         self._lock = threading.Lock()
+
+        # Last Twist command sent to the continuous drive topic
+        self.last_cont_drv_msg = Twist()
 
     # Creates an MoveBaseGoal object from a Pose and moves to it
     def move_to_pose(self, pose, report=True):
@@ -221,6 +227,20 @@ class FlorenceBaseController:
         self.crawl_thread = threading.Thread(target=self.crawler_thread_function, args=(amount,), daemon=True)
         
         self.crawl_thread.start()
+
+    # This needs to take in a Twist message, analyse it for sanity, perhaps filter it and then pass it to cmd_vel
+    def on_drive_continuously(self, twist_msg):
+
+        if (abs(twist_msg.linear.x) < 0.1 or abs(twist_msg.linear.x) > 0.5):
+            twist_msg.linear.x = 0
+
+        if (abs(twist_msg.angular.z) < 0.1 or abs(twist_msg.angular.z) > 0.5):
+            twist_msg.angular.z = 0
+
+        self.cmd_vel_pub.publish(twist_msg)
+
+        # Remember the last twist message that was sent to cmd_vel
+        self.last_cont_drv_msg = twist_msg
 
     # This is what our crawl thread will be executing
     def rotation_thread_function(self, amount):
