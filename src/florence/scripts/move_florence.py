@@ -13,6 +13,7 @@ import threading
 from enum import Enum
 
 Crawl_Thread_State = Enum('Crawl_Thread_State', 'idle crawling have_to_stop stopping')
+Rotate_Thread_State = Enum('Rotate_Thread_State', 'idle turning have_to_stop stopping')
 
 class FlorenceBaseController:
     # Number of seconds required to rotate 1 degree at speed of 0.1 when using base_driver.move.
@@ -26,6 +27,10 @@ class FlorenceBaseController:
         # Crawling thread initial state
         self.crawl_state = Crawl_Thread_State.idle
         self.crawl_thread = None
+        
+        # Rotation thread initial state
+        self.rotation_state = Rotate_Thread_State.idle
+        self.rotation_thread = None
 
         # We will subscribe to a String command topic
         self.base_sub = rospy.Subscriber("/base_cntrl/in_cmd", String, self.on_command)
@@ -38,7 +43,7 @@ class FlorenceBaseController:
         # swipe of the screen is about +-0.2, depending on whether we're going left to right or right to left. Also, smaller
         # swipes appear to be anywhere between 0.03 and 0.15- almost irrespectively of how much was intended to sweep. So
         # we will probably need to loosely rely on this number and rotate by relatively small amount even with full swipe.
-        self.rotate_sub = rospy.Subscriber("/base_cntrl/rotate_x", Float32, self.on_rotate)
+        self.rotate_sub = rospy.Subscriber("/base_cntrl/rotate_x", Float32, self.on_rotate2)
 
         # We will subscribe to a Float32 command topic to crawl forward or backwards by the passed value, which will come from Unity.
         # The value is a bit arbitrary, but we'll need to make sense of it. At the moment it looks like more or less a full
@@ -214,6 +219,51 @@ class FlorenceBaseController:
         self.crawl_thread = threading.Thread(target=self.crawler_thread_function, args=(amount,), daemon=True)
         
         self.crawl_thread.start()
+
+    # This is what our crawl thread will be executing
+    def rotation_thread_function(self, amount):
+        self.rotation_state = Rotate_Thread_State.idle
+
+        cmd = Twist()
+        if (amount.data > 0):
+            cmd.angular.z = 0.5 # constant speed of crawl forward
+        else:
+            cmd.angular.z = -0.5 # constant speed of crawl backwards
+
+        duration = round(abs(amount.data) * 5)
+        r = rospy.Rate(10)
+        self.rotation_state = Rotate_Thread_State.turning
+        for ii in range(int(10*duration)):
+            r.sleep()
+            # check if we need to stop
+            if (self.rotation_state == Rotate_Thread_State.have_to_stop):
+                break
+            # otherwise send the Twist message to the cmd_vel topic
+            self.cmd_vel_pub.publish(cmd)
+        #rospy.loginfo('Stopping')
+        self.rotation_state = Rotate_Thread_State.stopping
+        cmd = Twist()
+        for ii in range(10):
+            r.sleep()
+            self.cmd_vel_pub.publish(cmd)
+        
+        # finally mark the thread as done
+        self.rotation_state = Rotate_Thread_State.idle
+
+    # When user wants the robot to rotate, then this will be called with a float32 number loosely indicating
+    # amount to rotate by. See comment of self.rotate_sub for more info.
+    # Positive number: rotating clock wise, negative: rotating counter clock wise
+    def on_rotate2(self, amount):
+        Rotate_Thread_State
+        # First if we already have some thread running, then tell it to stop and wait for it.
+        if (self.rotation_state != Rotate_Thread_State.idle):
+            self.rotation_state = Rotate_Thread_State.have_to_stop
+            self.rotation_thread.join()
+    
+        # Now create a brand new thread and let it run
+        self.rotation_thread = threading.Thread(target=self.rotation_thread_function, args=(amount,), daemon=True)
+        
+        self.rotation_thread.start()
         
     def shutdown(self):
         rospy.loginfo("Stopping Florence base controller...")
