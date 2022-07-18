@@ -18,7 +18,7 @@
     <node pkg="ira_laser_tools" name="laserscan_multi_merger" type="laserscan_multi_merger" output="screen">
       <param name="destination_frame" value="front_laser_mount"/>
       <param name="cloud_destination_topic" value="/merged_cloud"/>
-      <param name="scan_destination_topic" value="/scan_multi"/>
+      <param name="scan_destination_topic" value="/scan"/>
       <param name="laserscan_topics" value ="/front/scan /rear/scan" /> <!-- LIST OF THE LASER SCAN TOPICS TO SUBSCRIBE -->
       <param name="angle_min" value="-2.0"/>
       <param name="angle_max" value="2.0"/>
@@ -28,9 +28,9 @@
       <param name="range_max" value="50.0"/>
     </node>
 
-    <!--node pkg="laser_filters" type="scan_to_scan_filter_chain" name="laser_filter">
+    <node pkg="laser_filters" type="scan_to_scan_filter_chain" name="laser_filter">
       <rosparam command="load" file="$(find florence)/config/husky_laser_filter.yaml" />
-    </node-->
+    </node>
   </group>
 
   <group if="$(optenv USB_CAM 0)">
@@ -51,14 +51,16 @@
   </group>
 
   <!-- Compresses ROS simulation image into a CompressedImage that we can show in unity -->
-  <!--rosrun image_transport republish raw in:=/sim_camera1/image_raw compressed out:=/sim_camera1/image_comp -->
-  <node name="republish" pkg="image_transport" type="republish" respawn="false" output="screen" >
-    <param name="in_transport" value="raw" />
-    <!--param name="in" value="/sim_camera1/image_raw"/-->
-    <param name="out_transport" value="compressed"/>
-    <!--param name="out" value="/sim_camera1/image_comp"/-->
-    <remap from="/sim_camera1/image_raw" to="/sim_camera1/image_comp" />
-  </node>
+  <group if="$(optenv SIM_CAM 0)">
+    <!--rosrun image_transport republish raw in:=/sim_camera1/image_raw compressed out:=/sim_camera1/image_comp -->
+    <node name="republish" pkg="image_transport" type="republish" respawn="false" output="screen" >
+      <param name="in_transport" value="raw" />
+      <!--param name="in" value="/sim_camera1/image_raw"/-->
+      <param name="out_transport" value="compressed"/>
+      <!--param name="out" value="/sim_camera1/image_comp"/-->
+      <remap from="/sim_camera1/image_raw" to="/sim_camera1/image_comp" />
+    </node>
+  </group>
 
   <!-- Run Florence base controller -->
   <node name="florence_base_controller" pkg="florence" type="move_florence.py" output="log" >
@@ -69,7 +71,7 @@
 
   <!--- Run gmapping -->
   <include file="$(find husky_navigation)/launch/gmapping.launch">
-    <param name="scan_topic" value="front/scan" />
+    <param name="scan_topic" value="/scan_filtered" />
   </include>
 
   <!-- Run husky's cartographer -->
