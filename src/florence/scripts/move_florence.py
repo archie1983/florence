@@ -4,7 +4,7 @@ import rospy
 from std_msgs.msg import String, Float32
 import actionlib
 from actionlib_msgs.msg import *
-from geometry_msgs.msg import Quaternion, Twist, Pose
+from geometry_msgs.msg import Quaternion, Twist, Pose, Point
 from nav_msgs.msg import Odometry
 from std_srvs.srv import Empty
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal, MoveBaseActionGoal
@@ -25,12 +25,19 @@ class FlorenceBaseController:
         # We will publish a String feedback topic
         self.base_pub = rospy.Publisher("/base_cntrl/out_result", String, queue_size=3)
         
-        # We will subscribe to an Float32 command topic to rotate cw or ccw by the passed value, which will come from Unity.
+        # We will subscribe to a Float32 command topic to rotate cw or ccw by the passed value, which will come from Unity.
         # The value is a bit arbitrary, but we'll need to make sense of it. At the moment it looks like more or less a full
         # swipe of the screen is about +-0.2, depending on whether we're going left to right or right to left. Also, smaller
         # swipes appear to be anywhere between 0.03 and 0.15- almost irrespectively of how much was intended to sweep. So
         # we will probably need to loosely rely on this number and rotate by relatively small amount even with full swipe.
         self.rotate_sub = rospy.Subscriber("/base_cntrl/rotate_x", Float32, self.on_rotate)
+
+        # We will subscribe to a Float32 command topic to crawl forward or backwards by the passed value, which will come from Unity.
+        # The value is a bit arbitrary, but we'll need to make sense of it. At the moment it looks like more or less a full
+        # hand move through the screen depth is about +-0.2, depending on whether we're going far to near or near to far. Also, smaller
+        # moves appear to be anywhere between 0.03 and 0.15- almost irrespectively of how much was intended to move. So
+        # we will probably need to loosely rely on this number and crawl by relatively small amount even with full move.
+        self.rotate_sub = rospy.Subscriber("/base_cntrl/crawl_x", Float32, self.on_crawl)
         
         # We will subscribe to an Int16 command topic to move forward by the passed amount of meters.
         self.go_fwd_sub = rospy.Subscriber("/base_cntrl/go_fwd", Float32, self.on_fwd)
@@ -140,6 +147,16 @@ class FlorenceBaseController:
         
         cur_orientation = self.cur_odometry.pose.pose.orientation
         desired_pose = Pose(self.cur_odometry.pose.pose.position, self.rotateQuaternionAroundZ(cur_orientation, amount.data * 5)) # This will be current pose with altered orientation
+        
+        self.move_to_pose(desired_pose, False)
+        #self.base_pub.publish("OK ROTATE")
+    
+    # When user wants the robot to move forward, then this will be called with a float32 number loosely indicating
+    # amount to move forward by (or backwards if the number is negative). See comment of self.crawl_sub for more info.
+    # Positive number: moving forward, negative: moving backwards
+    def on_crawl(self, amount): 
+        cur_position = self.cur_odometry.pose.pose.position
+        desired_pose = Pose(Point(cur_position.x + amount.data * 50, cur_position.y, cur_position.z), self.cur_odometry.pose.pose.orientation) # This will be current pose with altered orientation
         
         self.move_to_pose(desired_pose, False)
         #self.base_pub.publish("OK ROTATE")

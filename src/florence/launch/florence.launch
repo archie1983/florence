@@ -31,6 +31,13 @@
 
   <!-- Compresses ROS simulation image into a CompressedImage that we can show in unity -->
   <!--rosrun image_transport republish raw in:=/sim_camera1/image_raw compressed out:=/sim_camera1/image_comp -->
+  <node name="republish" pkg="image_transport" type="republish" respawn="false" output="screen" >
+    <param name="in_transport" value="raw" />
+    <!--param name="in" value="/sim_camera1/image_raw"/-->
+    <param name="out_transport" value="compressed"/>
+    <!--param name="out" value="/sim_camera1/image_comp"/-->
+    <remap from="/sim_camera1/image_raw" to="/sim_camera1/image_comp" />
+  </node>
 
   <!-- Run Florence base controller -->
   <node name="florence_base_controller" pkg="florence" type="move_florence.py" output="log" >
