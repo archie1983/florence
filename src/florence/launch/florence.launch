@@ -12,6 +12,14 @@
     </node>
   </group>
 
+  <group if="$(optenv AELIDAR 0)">
+    <include file="$(find ldlidar_stl_ros)/launch/ld06.launch" />
+
+    <node pkg="laser_filters" type="scan_to_scan_filter_chain" name="laser_filter">
+      <rosparam command="load" file="$(find florence)/config/husky_laser_filter.yaml" />
+    </node>
+  </group>
+
   <!-- If we are using UST10 lidars then they are already running and we just need to start laser filters -->
   <group if="$(optenv HUSKY_UST10_ENABLED 0)">
     <!-- Let's merge the output from our two lidars into a single topic. -->
