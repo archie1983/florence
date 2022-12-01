@@ -1,0 +1,2 @@
+SUBSYSTEM=="tty", ACTION=="add", KERNEL=="ttyUSB*", DRIVERS=="ftdi_sio", MODE="0666", ATTR{device/latency_timer}="1", SYMLINK+="dynamixel"
+#, RUN+="/usr/local/bin/trigger.sh"
