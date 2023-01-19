@@ -94,4 +94,7 @@
   <!-- Run ROS-TCP-Endpoint -->
   <include file="$(find ros_tcp_endpoint)/launch/endpoint.launch" />
 
+  <!-- Run Dynamixel servos for camera pan and tilt -->
+  <include file="$(find dynamixel_pan_tilt)/launch/pan_tilt.launch" />
+
 </launch>
