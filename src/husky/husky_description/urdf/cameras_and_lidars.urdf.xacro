@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<!-- ****** cameras and LiDARs ****** -->
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <xacro:include filename="$(find husky_description)/urdf/accessories/simple_camera.urdf.xacro" />
+  <xacro:include filename="$(find husky_description)/urdf/accessories/ae_lidar.urdf.xacro" />
+
+  <xacro:arg name="ae_lidar_enabled" default="$(optenv AELIDAR 0)" />
+
+  <!-- Camera -->
+  <xacro:simple_camera camera_name="sim_camera1" parent_link="top_plate_link" >
+    <origin xyz="0.0 0.0 0.54" rpy="0 0 0" />
+  </xacro:simple_camera>
+
+  <!-- LiDAR -->
+  <xacro:if value="$(arg ae_lidar_enabled)">
+    <xacro:ae_lidar_mount topic="/scan" prefix="ae_lidar1" parent_link="top_plate_link">
+        <origin xyz="0.32 0.0 0.0" rpy="0 0 0" />
+      </xacro:ae_lidar_mount>
+  </xacro:if>
+
+</robot>

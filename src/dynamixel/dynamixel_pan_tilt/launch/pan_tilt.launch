@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="dynamixel_pan_tilt" type="dynamixel_pan_tilt_node.py" name="dynamixel_pan_tilt_control">
+    <rosparam command="load" file="$(find dynamixel_pan_tilt)/config/servo_motor_params.yaml" />
+  </node>
+
+  <!-- Run ROS-TCP-Endpoint -->
+  <!-- include file="$(find ros_tcp_endpoint)/launch/endpoint.launch" / -->
+</launch>
